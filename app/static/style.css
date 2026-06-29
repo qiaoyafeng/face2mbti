@@ -451,14 +451,27 @@ body {
 }
 
 /* 模块5: 面部分析详情 */
-.toggle-arrow {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    transition: transform 0.3s;
+.btn-toggle-detail {
+    background: none;
+    border: 1.5px solid #7c3aed;
+    color: #7c3aed;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
 }
 
-.toggle-arrow.expanded {
-    transform: rotate(180deg);
+.btn-toggle-detail:hover {
+    background: #7c3aed;
+    color: #fff;
+}
+
+.btn-toggle-detail.expanded {
+    background: #7c3aed;
+    color: #fff;
 }
 
 .analysis-content {

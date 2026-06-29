@@ -357,12 +357,12 @@ function renderFaceAnalysis(analysis) {
 // 面部分析展开/收起
 const analysisToggle = document.getElementById('analysisToggle');
 const analysisContent = document.getElementById('analysisContent');
-const toggleArrow = document.getElementById('toggleArrow');
 
 analysisToggle.addEventListener('click', () => {
     const isExpanded = analysisContent.style.display !== 'none';
     analysisContent.style.display = isExpanded ? 'none' : 'block';
-    toggleArrow.classList.toggle('expanded', !isExpanded);
+    analysisToggle.classList.toggle('expanded', !isExpanded);
+    analysisToggle.textContent = isExpanded ? '查看详情 ▾' : '收起详情 ▴';
 });
 
 // ============ 错误处理 ============
@@ -408,5 +408,7 @@ function resetUpload() {
     
     // 重置面部分析收起状态
     document.getElementById('analysisContent').style.display = 'none';
-    document.getElementById('toggleArrow').classList.remove('expanded');
+    const toggleBtn = document.getElementById('analysisToggle');
+    toggleBtn.classList.remove('expanded');
+    toggleBtn.textContent = '查看详情 ▾';
 }
