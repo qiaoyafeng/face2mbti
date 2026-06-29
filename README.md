@@ -94,7 +94,9 @@ docker compose logs -f
 docker compose down
 ```
 
-服务启动后访问 `http://localhost:8000`，内置健康检查会每 30s 自动探测根路径。
+服务启动后访问 `http://localhost:<APP_PORT>`（默认 `8000`），内置健康检查会每 30s 自动探测根路径。
+
+> **开发模式**：`app/` 目录已挂载到容器内，修改代码后服务自动重载，无需重新构建镜像。
 
 > 镜像构建已配置阿里云 apt / PyPI 镜像源，国内环境无需额外加速。
 
@@ -103,6 +105,9 @@ docker compose down
 复制 `.env.example` 为 `.env` 并填写：
 
 ```env
+# 服务端口（Docker 宿主机映射 & 容器内监听，默认 8000）
+APP_PORT=8000
+
 # OpenAI 兼容 API 密钥
 OPENAI_API_KEY=your-api-key
 

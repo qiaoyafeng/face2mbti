@@ -10,6 +10,7 @@ class Settings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     MODEL_NAME: str = os.getenv("MODEL_NAME", "gpt-4o")
+    APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
 
 
 settings = Settings()

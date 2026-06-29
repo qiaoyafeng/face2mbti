@@ -25,8 +25,9 @@ RUN uv sync --frozen --no-dev --link-mode=copy
 # Copy application code
 COPY app/ ./app/
 
-# Expose port
-EXPOSE 8000
+# Expose port (default 8000, override via APP_PORT env)
+ENV APP_PORT=8000
+EXPOSE ${APP_PORT}
 
 # Run the application
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD uv run uvicorn app.main:app --host 0.0.0.0 --port ${APP_PORT:-8000}
