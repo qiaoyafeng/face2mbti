@@ -15,13 +15,37 @@ const resultSection = document.getElementById('resultSection');
 const errorSection = document.getElementById('errorSection');
 const retryBtn = document.getElementById('retryBtn');
 const errorRetryBtn = document.getElementById('errorRetryBtn');
+const actionButtons = document.getElementById('actionButtons');
+const btnUpload = document.getElementById('btnUpload');
+const btnCamera = document.getElementById('btnCamera');
+
+// 摄像头相关
+const cameraModal = document.getElementById('cameraModal');
+const cameraVideo = document.getElementById('cameraVideo');
+const cameraCanvas = document.getElementById('cameraCanvas');
+const cameraCapture = document.getElementById('cameraCapture');
+const cameraSwitch = document.getElementById('cameraSwitch');
+const cameraClose = document.getElementById('cameraClose');
+const cameraOverlay = document.getElementById('cameraOverlay');
+const cameraRetake = document.getElementById('cameraRetake');
+const btnRetake = document.getElementById('btnRetake');
+const btnUsePhoto = document.getElementById('btnUsePhoto');
 
 let selectedFile = null;
+let cameraStream = null;
+let facingMode = 'user'; // 'user' = 前置, 'environment' = 后置
+let capturedBlob = null;
 
 // ============ 上传相关 ============
 
-// 点击上传区域触发文件选择
+// 点击上传区显示操作按钮
 uploadArea.addEventListener('click', () => {
+    actionButtons.style.display = 'flex';
+    uploadArea.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+});
+
+// 选择照片按钮
+btnUpload.addEventListener('click', () => {
     fileInput.click();
 });
 
@@ -68,6 +92,7 @@ function handleFileSelect(file) {
     reader.onload = (e) => {
         previewImage.src = e.target.result;
         uploadArea.style.display = 'none';
+        actionButtons.style.display = 'none';
         previewArea.style.display = 'block';
         analyzeBtn.disabled = false;
     };
@@ -77,8 +102,115 @@ function handleFileSelect(file) {
 // 更换照片
 changeBtn.addEventListener('click', () => {
     resetUpload();
-    fileInput.click();
+    actionButtons.style.display = 'flex';
 });
+
+// ============ 摄像头拍照 ============
+
+// 打开摄像头
+btnCamera.addEventListener('click', async () => {
+    try {
+        await openCamera();
+    } catch (err) {
+        alert('无法访问摄像头：' + err.message + '\n\n请确保已授权摄像头权限，并使用 HTTPS 或 localhost 访问。');
+    }
+});
+
+async function openCamera() {
+    cameraModal.classList.add('active');
+    cameraRetake.style.display = 'none';
+    document.querySelector('.camera-controls').style.display = 'flex';
+    cameraVideo.style.display = 'block';
+    capturedBlob = null;
+
+    const constraints = {
+        video: {
+            facingMode: facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        },
+        audio: false
+    };
+
+    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    cameraVideo.srcObject = cameraStream;
+
+    // 检测是否支持切换摄像头（移动端）
+    const tracks = cameraStream.getVideoTracks();
+    const capabilities = tracks[0]?.getCapabilities?.();
+    cameraSwitch.style.display = capabilities?.facingMode ? 'block' : 'none';
+}
+
+function closeCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+    cameraVideo.srcObject = null;
+    cameraModal.classList.remove('active');
+}
+
+// 拍照
+cameraCapture.addEventListener('click', () => {
+    const ctx = cameraCanvas.getContext('2d');
+    cameraCanvas.width = cameraVideo.videoWidth;
+    cameraCanvas.height = cameraVideo.videoHeight;
+    ctx.drawImage(cameraVideo, 0, 0);
+
+    cameraCanvas.toBlob((blob) => {
+        capturedBlob = blob;
+        // 显示拍到的画面
+        const url = URL.createObjectURL(blob);
+        cameraVideo.style.display = 'none';
+        
+        // 用 video 元素显示拍摄结果
+        const img = document.createElement('img');
+        img.src = url;
+        img.className = 'captured-image';
+        img.id = 'capturedPreview';
+        
+        const viewport = document.querySelector('.camera-viewport');
+        const existing = document.getElementById('capturedPreview');
+        if (existing) existing.remove();
+        viewport.appendChild(img);
+
+        document.querySelector('.camera-controls').style.display = 'none';
+        cameraRetake.style.display = 'flex';
+    }, 'image/jpeg', 0.92);
+});
+
+// 重拍
+btnRetake.addEventListener('click', () => {
+    const preview = document.getElementById('capturedPreview');
+    if (preview) preview.remove();
+    cameraVideo.style.display = 'block';
+    document.querySelector('.camera-controls').style.display = 'flex';
+    cameraRetake.style.display = 'none';
+    capturedBlob = null;
+});
+
+// 使用此照片
+btnUsePhoto.addEventListener('click', () => {
+    if (!capturedBlob) return;
+    const file = new File([capturedBlob], 'camera_' + Date.now() + '.jpg', { type: 'image/jpeg' });
+    closeCamera();
+    handleFileSelect(file);
+});
+
+// 切换前后摄像头
+cameraSwitch.addEventListener('click', async () => {
+    facingMode = facingMode === 'user' ? 'environment' : 'user';
+    closeCamera();
+    try {
+        await openCamera();
+    } catch (err) {
+        alert('切换摄像头失败：' + err.message);
+    }
+});
+
+// 关闭摄像头
+cameraClose.addEventListener('click', closeCamera);
+cameraOverlay.addEventListener('click', closeCamera);
 
 // ============ 分析逻辑 ============
 
@@ -254,6 +386,8 @@ function resetUpload() {
     fileInput.value = '';
     previewArea.style.display = 'none';
     uploadArea.style.display = 'block';
+    actionButtons.style.display = 'none';
+    uploadArea.style.borderColor = '';
     analyzeBtn.disabled = true;
 
     // 重置步骤状态

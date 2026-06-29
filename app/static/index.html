@@ -11,7 +11,7 @@
     <div class="container">
         <header class="header">
             <h1>Face2MBTI - 看脸测性格</h1>
-            <p class="subtitle">上传一张自拍，AI 帮你分析 MBTI 性格类型</p>
+            <p class="subtitle">上传一张自拍或在线拍照，AI 帮你分析 MBTI 性格类型</p>
         </header>
 
         <main class="main">
@@ -22,6 +22,12 @@
                     <p class="upload-text">点击或拖拽上传自拍照片</p>
                     <p class="upload-hint">支持 JPG、PNG、WebP 格式，最大 10MB</p>
                     <input type="file" id="fileInput" accept="image/*" hidden>
+                </div>
+
+                <!-- 操作按钮组 -->
+                <div class="action-buttons" id="actionButtons" style="display: none;">
+                    <button class="btn-action btn-upload" id="btnUpload">📁 选择照片</button>
+                    <button class="btn-action btn-camera" id="btnCamera">📸 在线拍照</button>
                 </div>
 
                 <!-- 图片预览 -->
@@ -105,6 +111,30 @@
         <footer class="footer">
             <p>仅供参考，结果不代表真实 MBTI 类型 | 内容有好心情AI生成</p>
         </footer>
+    </div>
+
+    <!-- 摄像头拍照模态框 -->
+    <div class="camera-modal" id="cameraModal">
+        <div class="camera-overlay" id="cameraOverlay"></div>
+        <div class="camera-content">
+            <div class="camera-header">
+                <h3>拍照</h3>
+                <button class="camera-close" id="cameraClose">&times;</button>
+            </div>
+            <div class="camera-viewport">
+                <video id="cameraVideo" autoplay playsinline></video>
+                <canvas id="cameraCanvas" hidden></canvas>
+            </div>
+            <div class="camera-controls">
+                <button class="btn-switch" id="cameraSwitch" title="切换摄像头">🔄</button>
+                <button class="btn-capture" id="cameraCapture" title="拍照">⚪</button>
+                <div class="camera-spacer"></div>
+            </div>
+            <div class="camera-retake" id="cameraRetake" style="display: none;">
+                <button class="btn-action btn-retake-btn" id="btnRetake">重拍</button>
+                <button class="btn-action btn-use-btn" id="btnUsePhoto">使用此照片</button>
+            </div>
+        </div>
     </div>
 
     <script src="/static/script.js"></script>
