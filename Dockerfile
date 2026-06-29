@@ -1,10 +1,17 @@
 # Use Python 3.13 slim image
 FROM python:3.13-slim
 
+# Use Alibaba Cloud mirrors for apt and pip
+RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources \
+    && sed -i 's|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources
+
 # Install curl for healthcheck and uv
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir uv
+    && pip install --no-cache-dir uv -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+
+# Configure uv to use Alibaba Cloud PyPI mirror
+ENV UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 
 # Set working directory
 WORKDIR /app
