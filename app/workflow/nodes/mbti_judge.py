@@ -71,7 +71,7 @@ def mbti_judge_node(state: MBTIState) -> dict:
 请根据以上面部特征分析，判断这个人最可能的 MBTI 性格类型。记住：只能给出一个确定的结果。"""
 
     try:
-        response = client.chat.completions.create(
+        create_params = dict(
             model=settings.MODEL_NAME,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -80,6 +80,9 @@ def mbti_judge_node(state: MBTIState) -> dict:
             temperature=0.5,
             response_format={"type": "json_object"},
         )
+        if not settings.ENABLE_THINKING:
+            create_params["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
+        response = client.chat.completions.create(**create_params)
 
         result = json.loads(response.choices[0].message.content)
 

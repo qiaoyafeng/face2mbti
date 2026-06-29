@@ -11,6 +11,7 @@ class Settings:
     OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     MODEL_NAME: str = os.getenv("MODEL_NAME", "gpt-4o")
     APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
+    ENABLE_THINKING: bool = os.getenv("ENABLE_THINKING", "false").lower() == "true"
 
 
 settings = Settings()

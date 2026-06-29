@@ -42,7 +42,7 @@ def image_input_node(state: MBTIState) -> dict:
     )
 
     try:
-        response = client.chat.completions.create(
+        create_params = dict(
             model=settings.MODEL_NAME,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -62,6 +62,9 @@ def image_input_node(state: MBTIState) -> dict:
             temperature=0.3,
             response_format={"type": "json_object"},
         )
+        if not settings.ENABLE_THINKING:
+            create_params["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
+        response = client.chat.completions.create(**create_params)
 
         result = json.loads(response.choices[0].message.content)
         

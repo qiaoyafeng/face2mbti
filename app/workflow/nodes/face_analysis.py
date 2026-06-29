@@ -42,7 +42,7 @@ def face_analysis_node(state: MBTIState) -> dict:
     user_content = f"这是一张人脸照片。基本描述：{image_description}\n\n请对这张照片进行详细的面部特征分析，重点关注与性格倾向相关的特征。"
 
     try:
-        response = client.chat.completions.create(
+        create_params = dict(
             model=settings.MODEL_NAME,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -61,6 +61,9 @@ def face_analysis_node(state: MBTIState) -> dict:
             ],
             temperature=0.7,
         )
+        if not settings.ENABLE_THINKING:
+            create_params["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
+        response = client.chat.completions.create(**create_params)
 
         face_features = response.choices[0].message.content
         
