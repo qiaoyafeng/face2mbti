@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face2MBTI - 看脸测性格</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Face2MBTI</h1>
+            <p class="subtitle">上传一张自拍，AI 帮你分析 MBTI 性格类型</p>
+        </header>
+
+        <main class="main">
+            <!-- 上传区域 -->
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📷</div>
+                    <p class="upload-text">点击或拖拽上传自拍照片</p>
+                    <p class="upload-hint">支持 JPG、PNG、WebP 格式，最大 10MB</p>
+                    <input type="file" id="fileInput" accept="image/*" hidden>
+                </div>
+
+                <!-- 图片预览 -->
+                <div class="preview-area" id="previewArea" style="display: none;">
+                    <img id="previewImage" src="" alt="预览图片">
+                    <button class="btn-change" id="changeBtn">更换照片</button>
+                </div>
+
+                <!-- 分析按钮 -->
+                <button class="btn-analyze" id="analyzeBtn" disabled>开始分析</button>
+            </div>
+
+            <!-- 加载动画 -->
+            <div class="loading-section" id="loadingSection" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">AI 正在分析你的面部特征...</p>
+                <div class="loading-steps">
+                    <div class="step active" id="step1">验证照片</div>
+                    <div class="step" id="step2">分析面部特征</div>
+                    <div class="step" id="step3">判断 MBTI 类型</div>
+                    <div class="step" id="step4">生成结果</div>
+                </div>
+            </div>
+
+            <!-- 结果展示 -->
+            <div class="result-section" id="resultSection" style="display: none;">
+                <!-- 模块1: MBTI 类型卡片 -->
+                <div class="module module-type">
+                    <div class="type-badge" id="mbtiType"></div>
+                    <div class="type-nickname" id="mbtiNickname"></div>
+                </div>
+
+                <!-- 模块2: 匹配度卡片 -->
+                <div class="module module-confidence">
+                    <div class="module-header">
+                        <span class="module-title">匹配度</span>
+                        <span class="module-value" id="confidenceValue"></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="confidenceBar"></div>
+                    </div>
+                </div>
+
+                <!-- 模块3: 性格描述卡片 -->
+                <div class="module module-description">
+                    <p class="description-text" id="resultDescription"></p>
+                </div>
+
+                <!-- 模块4: 四维度分析卡片 -->
+                <div class="module module-dimensions">
+                    <div class="module-header">
+                        <span class="module-title">四维度分析</span>
+                    </div>
+                    <div class="dimensions-grid" id="dimensions"></div>
+                </div>
+
+                <!-- 模块5: 面部分析详情卡片 -->
+                <div class="module module-analysis">
+                    <div class="module-header clickable" id="analysisToggle">
+                        <span class="module-title">面部特征分析</span>
+                        <span class="toggle-arrow" id="toggleArrow">▼</span>
+                    </div>
+                    <div class="analysis-content" id="analysisContent" style="display: none;">
+                        <div class="markdown-body" id="faceAnalysis"></div>
+                    </div>
+                </div>
+
+                <button class="btn-retry" id="retryBtn">再测一次</button>
+            </div>
+
+            <!-- 错误提示 -->
+            <div class="error-section" id="errorSection" style="display: none;">
+                <div class="error-card">
+                    <div class="error-icon">⚠️</div>
+                    <p class="error-message" id="errorMessage"></p>
+                </div>
+                <button class="btn-retry" id="errorRetryBtn">重新上传</button>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>仅供娱乐，结果不代表真实 MBTI 类型 | Powered by AI</p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

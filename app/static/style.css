@@ -1,0 +1,588 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    padding: 40px 0 20px;
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    color: #fff;
+    font-weight: 800;
+    letter-spacing: -1px;
+}
+
+.subtitle {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 1rem;
+    margin-top: 8px;
+}
+
+/* Main */
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Upload Section */
+.upload-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.upload-area {
+    width: 100%;
+    border: 3px dashed rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 60px 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.upload-area:hover {
+    border-color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.upload-area.drag-over {
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
+.upload-text {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.upload-hint {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+    margin-top: 8px;
+}
+
+/* Preview */
+.preview-area {
+    width: 100%;
+    text-align: center;
+    position: relative;
+}
+
+.preview-area img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.btn-change {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.3s;
+}
+
+.btn-change:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* Buttons */
+.btn-analyze {
+    width: 100%;
+    max-width: 300px;
+    padding: 16px 32px;
+    border: none;
+    border-radius: 50px;
+    background: #fff;
+    color: #764ba2;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-analyze:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.btn-analyze:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-retry {
+    margin-top: 20px;
+    padding: 14px 40px;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50px;
+    background: transparent;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-retry:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Loading */
+.loading-section {
+    text-align: center;
+    padding: 40px 0;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: #fff;
+    font-size: 1.1rem;
+    margin-bottom: 24px;
+}
+
+.loading-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+}
+
+.loading-steps .step {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.9rem;
+    transition: all 0.3s;
+}
+
+.loading-steps .step.active {
+    color: #fff;
+    font-weight: 600;
+}
+
+.loading-steps .step.done {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: line-through;
+}
+
+/* Result Section - 模块化扁平化设计 */
+.result-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    animation: fadeInUp 0.6s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 模块基础样式 */
+.module {
+    width: 100%;
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.module-header.clickable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.module-header.clickable:hover {
+    opacity: 0.8;
+}
+
+.module-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.module-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #764ba2;
+}
+
+/* 模块1: MBTI 类型卡片 */
+.module-type {
+    text-align: center;
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+    padding: 32px 24px;
+}
+
+.type-badge {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: #7c3aed;
+    letter-spacing: 6px;
+    line-height: 1;
+}
+
+.type-nickname {
+    font-size: 1.1rem;
+    color: #6b7280;
+    margin-top: 8px;
+    font-weight: 500;
+}
+
+/* 模块2: 匹配度卡片 */
+.module-confidence .module-header {
+    margin-bottom: 12px;
+}
+
+.progress-bar {
+    height: 12px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+    border-radius: 6px;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0;
+}
+
+/* 模块3: 性格描述卡片 */
+.module-description {
+    border-left: 4px solid #7c3aed;
+}
+
+.description-text {
+    color: #4b5563;
+    line-height: 1.8;
+    font-size: 0.95rem;
+}
+
+/* 模块4: 四维度分析 */
+.dimensions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.dimension-item {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dimension-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.dimension-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.dimension-label {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.dimension-letter {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #7c3aed;
+}
+
+.dimension-score {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.dimension-bar {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    margin: 8px 0;
+    overflow: hidden;
+}
+
+.dimension-bar-fill {
+    height: 100%;
+    background: #7c3aed;
+    border-radius: 3px;
+    transition: width 1s ease;
+}
+
+.dimension-reason {
+    font-size: 0.8rem;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+/* 模块5: 面部分析详情 */
+.toggle-arrow {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    transition: transform 0.3s;
+}
+
+.toggle-arrow.expanded {
+    transform: rotate(180deg);
+}
+
+.analysis-content {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 16px;
+    margin-top: 0;
+}
+
+/* Markdown 渲染样式 */
+.markdown-body {
+    font-size: 0.9rem;
+    color: #4b5563;
+    line-height: 1.8;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+    color: #1f2937;
+    margin: 16px 0 8px 0;
+    font-weight: 600;
+}
+
+.markdown-body h1 { font-size: 1.2rem; }
+.markdown-body h2 { font-size: 1.1rem; }
+.markdown-body h3 { font-size: 1rem; }
+.markdown-body h4 { font-size: 0.95rem; }
+
+.markdown-body p {
+    margin: 8px 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.markdown-body li {
+    margin: 4px 0;
+}
+
+.markdown-body strong {
+    color: #7c3aed;
+    font-weight: 600;
+}
+
+.markdown-body em {
+    color: #6b7280;
+    font-style: italic;
+}
+
+.markdown-body code {
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: #7c3aed;
+}
+
+.markdown-body blockquote {
+    border-left: 3px solid #7c3aed;
+    padding-left: 12px;
+    margin: 12px 0;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.markdown-body hr {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 16px 0;
+}
+
+.markdown-body a {
+    color: #7c3aed;
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
+}
+
+.markdown-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.85rem;
+}
+
+.markdown-body th,
+.markdown-body td {
+    border: 1px solid #e5e7eb;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.markdown-body th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+}
+
+/* Error */
+.error-section {
+    text-align: center;
+    animation: fadeInUp 0.6s ease;
+}
+
+.error-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
+.error-message {
+    color: #555;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.footer p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .container {
+        padding: 16px;
+    }
+
+    .header h1 {
+        font-size: 2rem;
+    }
+
+    .upload-area {
+        padding: 40px 20px;
+    }
+
+    .module {
+        padding: 20px;
+    }
+
+    .module-type {
+        padding: 24px 20px;
+    }
+
+    .type-badge {
+        font-size: 2.8rem;
+    }
+
+    .dimensions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dimension-item {
+        padding: 14px;
+    }
+
+    .result-section {
+        gap: 12px;
+    }
+}

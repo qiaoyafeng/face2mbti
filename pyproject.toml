@@ -1,0 +1,20 @@
+[project]
+name = "face2mbti"
+version = "0.1.0"
+description = "看脸测MBTI - 基于LangGraph节点式工作流的AI性格分析智能体"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.138.1",
+    "langchain-core>=1.4.8",
+    "langchain-openai>=1.3.3",
+    "langgraph>=1.2.6",
+    "openai>=2.44.0",
+    "pillow>=12.2.0",
+    "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.32",
+    "uvicorn[standard]>=0.49.0",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
