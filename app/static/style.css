@@ -319,6 +319,24 @@ body {
     padding: 32px 24px;
 }
 
+/* 上传照片展示模块 */
+.module-photo {
+    text-align: center;
+}
+
+.photo-display {
+    display: flex;
+    justify-content: center;
+}
+
+.photo-display img {
+    max-width: 100%;
+    max-height: 260px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
 .type-badge {
     font-size: 3.5rem;
     font-weight: 800;

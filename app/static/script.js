@@ -35,6 +35,7 @@ let selectedFile = null;
 let cameraStream = null;
 let facingMode = 'user'; // 'user' = 前置, 'environment' = 后置
 let capturedBlob = null;
+let uploadedPhotoDataUrl = null; // 存储上传照片的 Data URL
 
 // ============ 上传相关 ============
 
@@ -90,7 +91,8 @@ function handleFileSelect(file) {
     // 显示预览
     const reader = new FileReader();
     reader.onload = (e) => {
-        previewImage.src = e.target.result;
+        uploadedPhotoDataUrl = e.target.result;
+        previewImage.src = uploadedPhotoDataUrl;
         uploadArea.style.display = 'none';
         actionButtons.style.display = 'none';
         previewArea.style.display = 'block';
@@ -270,7 +272,7 @@ function simulateSteps() {
         } else {
             clearInterval(interval);
         }
-    }, 3000);
+    }, 5000);
 
     // 存储 interval 以便在结果到来时清除
     window._stepInterval = interval;
@@ -283,6 +285,11 @@ function showResult(data) {
 
     loadingSection.style.display = 'none';
     resultSection.style.display = 'flex';
+
+    // 展示上传的照片
+    if (uploadedPhotoDataUrl) {
+        document.getElementById('resultPhoto').src = uploadedPhotoDataUrl;
+    }
 
     // 填充数据
     document.getElementById('mbtiType').textContent = data.mbti_type;
@@ -383,6 +390,7 @@ function resetAll() {
 
 function resetUpload() {
     selectedFile = null;
+    uploadedPhotoDataUrl = null;
     fileInput.value = '';
     previewArea.style.display = 'none';
     uploadArea.style.display = 'block';
