@@ -76,6 +76,12 @@ async def video_page():
     return FileResponse(STATIC_DIR / "video.html")
 
 
+@app.get("/result")
+async def result_page():
+    """返回任务结果展示页"""
+    return FileResponse(STATIC_DIR / "result.html")
+
+
 @app.post("/api/analyze")
 async def analyze(file: UploadFile = File(...)):
     """接收上传的图片，保存文件后创建异步任务，立即返回 task_id

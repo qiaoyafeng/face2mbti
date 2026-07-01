@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face2MBTI - 任务结果</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Face2MBTI - 任务结果</h1>
+            <p class="subtitle">查看 MBTI 性格分析结果</p>
+            <a href="/" class="subtitle" style="display:inline-block;margin-top:4px;text-decoration:underline;cursor:pointer;">← 返回首页</a>
+        </header>
+
+        <main class="main">
+            <!-- 加载动画 -->
+            <div class="loading-section" id="loadingSection">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">正在加载任务结果...</p>
+            </div>
+
+            <!-- 任务处理中 -->
+            <div class="loading-section" id="processingSection" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">任务处理中，请稍候...</p>
+                <div class="loading-steps">
+                    <div class="step active" id="pStep1">验证文件</div>
+                    <div class="step" id="pStep2">分析特征</div>
+                    <div class="step" id="pStep3">判断类型</div>
+                    <div class="step" id="pStep4">生成结果</div>
+                </div>
+            </div>
+
+            <!-- 结果展示 -->
+            <div class="result-section" id="resultSection" style="display: none;">
+                <!-- 上传媒体展示（图片或视频） -->
+                <div class="module module-photo" id="mediaModule">
+                    <div class="module-header">
+                        <span class="module-title" id="mediaTitle">你的照片</span>
+                    </div>
+                    <div class="photo-display">
+                        <img id="resultPhoto" src="" alt="上传的照片" style="display:none;">
+                        <video id="resultVideo" controls playsinline style="display:none;max-width:100%;border-radius:8px;"></video>
+                    </div>
+                </div>
+
+                <!-- 模块1: MBTI 类型卡片 -->
+                <div class="module module-type">
+                    <div class="type-badge" id="mbtiType"></div>
+                    <div class="type-nickname" id="mbtiNickname"></div>
+                </div>
+
+                <!-- 模块2: 匹配度卡片 -->
+                <div class="module module-confidence">
+                    <div class="module-header">
+                        <span class="module-title">匹配度</span>
+                        <span class="module-value" id="confidenceValue"></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="confidenceBar"></div>
+                    </div>
+                </div>
+
+                <!-- 模块3: 性格描述卡片 -->
+                <div class="module module-description">
+                    <p class="description-text" id="resultDescription"></p>
+                </div>
+
+                <!-- 模块4: 四维度分析卡片 -->
+                <div class="module module-dimensions">
+                    <div class="module-header">
+                        <span class="module-title">四维度分析</span>
+                    </div>
+                    <div class="dimensions-grid" id="dimensions"></div>
+                </div>
+
+                <!-- 模块5: 面部分析详情卡片 -->
+                <div class="module module-analysis">
+                    <div class="module-header">
+                        <span class="module-title">面部特征分析</span>
+                        <button class="btn-toggle-detail" id="analysisToggle">查看详情 ▾</button>
+                    </div>
+                    <div class="analysis-content" id="analysisContent" style="display: none;">
+                        <div class="markdown-body" id="faceAnalysis"></div>
+                    </div>
+                </div>
+
+                <a href="/" class="btn-retry" style="text-decoration:none;text-align:center;display:inline-block;">返回首页</a>
+            </div>
+
+            <!-- 错误提示 -->
+            <div class="error-section" id="errorSection" style="display: none;">
+                <div class="error-card">
+                    <div class="error-icon">⚠️</div>
+                    <p class="error-message" id="errorMessage"></p>
+                </div>
+                <a href="/" class="btn-retry" style="text-decoration:none;text-align:center;display:inline-block;margin-top:20px;">返回首页</a>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>仅供参考，结果不代表真实 MBTI 类型 | 内容由好心情AI生成</p>
+        </footer>
+    </div>
+
+    <script src="/static/result.js"></script>
+</body>
+</html>
