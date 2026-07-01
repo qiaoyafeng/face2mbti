@@ -10,6 +10,12 @@ class MBTIState(TypedDict, total=False):
     # 输入
     image_base64: str  # 原始图片 base64 编码
 
+    # 视频输入
+    frames_base64: list  # 抽帧后的图片 base64 列表
+    frame_timestamps: list  # 每帧对应的时间戳（秒）
+    frame_count: int  # 帧数
+    is_video_input: bool  # 是否为视频输入
+
     # 节点1输出: 图片预处理结果
     image_description: str  # 图片基本描述
     is_valid_face: bool  # 是否为有效人脸照片

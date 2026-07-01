@@ -5,8 +5,8 @@ FROM python:3.13-slim
 RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources \
     && sed -i 's|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources
 
-# Install curl for healthcheck and uv
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
+# Install curl for healthcheck, ffmpeg for video processing, and uv
+RUN apt-get update && apt-get install -y --no-install-recommends curl ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir uv -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 

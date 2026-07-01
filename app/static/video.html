@@ -3,38 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face2MBTI - 看脸测性格</title>
+    <title>Face2MBTI - 视频测性格</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/video.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <h1>Face2MBTI - 看脸测性格</h1>
-            <p class="subtitle">上传一张自拍或在线拍照，AI 帮你分析 MBTI 性格类型</p>
-            <a href="/video" class="subtitle" style="display:inline-block;margin-top:4px;text-decoration:underline;cursor:pointer;">🎬 试试视频分析 →</a>
+            <h1>Face2MBTI - 视频测性格</h1>
+            <p class="subtitle">上传一段 30 秒的视频，AI 帮你分析 MBTI 性格类型</p>
+            <a href="/" class="back-link">← 返回图片分析</a>
         </header>
 
         <main class="main">
             <!-- 上传区域 -->
             <div class="upload-section" id="uploadSection">
                 <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">📷</div>
-                    <p class="upload-text">点击或拖拽上传自拍照片</p>
-                    <p class="upload-hint">支持 JPG、PNG、WebP 格式，最大 10MB</p>
-                    <input type="file" id="fileInput" accept="image/*" hidden>
+                    <div class="upload-icon">🎬</div>
+                    <p class="upload-text">点击或拖拽上传视频</p>
+                    <p class="upload-hint">支持 MP4、WebM、MOV 格式，最大 50MB，建议 30 秒以内</p>
+                    <input type="file" id="fileInput" accept="video/*" hidden>
                 </div>
 
-                <!-- 操作按钮组 -->
-                <div class="action-buttons" id="actionButtons" style="display: none;">
-                    <button class="btn-action btn-upload" id="btnUpload">📁 选择照片</button>
-                    <button class="btn-action btn-camera" id="btnCamera">📸 在线拍照</button>
-                </div>
-
-                <!-- 图片预览 -->
+                <!-- 视频预览 -->
                 <div class="preview-area" id="previewArea" style="display: none;">
-                    <img id="previewImage" src="" alt="预览图片">
-                    <button class="btn-change" id="changeBtn">更换照片</button>
+                    <video id="previewVideo" controls playsinline></video>
+                    <button class="btn-change" id="changeBtn">更换视频</button>
                 </div>
 
                 <!-- 分析按钮 -->
@@ -44,27 +39,18 @@
             <!-- 加载动画 -->
             <div class="loading-section" id="loadingSection" style="display: none;">
                 <div class="loading-spinner"></div>
-                <p class="loading-text">AI 正在分析你的面部特征...</p>
+                <p class="loading-text">AI 正在分析视频中的面部特征...</p>
                 <div class="loading-steps">
-                    <div class="step active" id="step1">验证照片</div>
-                    <div class="step" id="step2">分析面部特征</div>
-                    <div class="step" id="step3">判断 MBTI 类型</div>
-                    <div class="step" id="step4">生成结果</div>
+                    <div class="step active" id="step1">视频处理</div>
+                    <div class="step" id="step2">验证人脸</div>
+                    <div class="step" id="step3">分析面部特征</div>
+                    <div class="step" id="step4">判断 MBTI 类型</div>
+                    <div class="step" id="step5">生成结果</div>
                 </div>
             </div>
 
             <!-- 结果展示 -->
             <div class="result-section" id="resultSection" style="display: none;">
-                <!-- 上传照片展示 -->
-                <div class="module module-photo">
-                    <div class="module-header">
-                        <span class="module-title">你的照片</span>
-                    </div>
-                    <div class="photo-display">
-                        <img id="resultPhoto" src="" alt="上传的照片">
-                    </div>
-                </div>
-
                 <!-- 模块1: MBTI 类型卡片 -->
                 <div class="module module-type">
                     <div class="type-badge" id="mbtiType"></div>
@@ -124,30 +110,6 @@
         </footer>
     </div>
 
-    <!-- 摄像头拍照模态框 -->
-    <div class="camera-modal" id="cameraModal">
-        <div class="camera-overlay" id="cameraOverlay"></div>
-        <div class="camera-content">
-            <div class="camera-header">
-                <h3>拍照</h3>
-                <button class="camera-close" id="cameraClose">&times;</button>
-            </div>
-            <div class="camera-viewport">
-                <video id="cameraVideo" autoplay playsinline></video>
-                <canvas id="cameraCanvas" hidden></canvas>
-            </div>
-            <div class="camera-controls">
-                <button class="btn-switch" id="cameraSwitch" title="切换摄像头">🔄</button>
-                <button class="btn-capture" id="cameraCapture" title="拍照">⚪</button>
-                <div class="camera-spacer"></div>
-            </div>
-            <div class="camera-retake" id="cameraRetake" style="display: none;">
-                <button class="btn-action btn-retake-btn" id="btnRetake">重拍</button>
-                <button class="btn-action btn-use-btn" id="btnUsePhoto">使用此照片</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="/static/script.js"></script>
+    <script src="/static/video.js"></script>
 </body>
 </html>

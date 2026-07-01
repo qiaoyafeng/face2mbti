@@ -7,7 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
 
+from app.config import settings
 from app.workflow.graph import graph
+from app.workflow.video_graph import video_graph
+from app.utils.video_processor import extract_frames
 
 # 配置日志
 logging.basicConfig(
@@ -26,6 +29,12 @@ STATIC_DIR = Path(__file__).parent / "static"
 async def index():
     """返回前端页面"""
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/video")
+async def video_page():
+    """返回视频分析页面"""
+    return FileResponse(STATIC_DIR / "video.html")
 
 
 @app.post("/api/analyze")
@@ -90,6 +99,108 @@ async def analyze_debug(file: UploadFile = File(...)):
     node_outputs = {}
     try:
         for event in graph.stream({"image_base64": image_base64}):
+            for node_name, node_output in event.items():
+                node_outputs[node_name] = node_output
+    except Exception as e:
+        node_outputs["error"] = str(e)
+
+    return node_outputs
+
+
+@app.post("/api/analyze-video")
+async def analyze_video(file: UploadFile = File(...)):
+    """接收上传的视频，抽帧后调用工作流分析 MBTI
+
+    Args:
+        file: 上传的视频文件（支持 mp4/webm/mov 等）
+
+    Returns:
+        MBTI 分析结果 JSON
+    """
+    # 验证文件类型
+    if not file.content_type or not file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="请上传有效的视频文件")
+
+    # 限制文件大小
+    max_size = settings.VIDEO_MAX_SIZE_MB * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"视频文件过大，请上传小于 {settings.VIDEO_MAX_SIZE_MB}MB 的视频",
+        )
+
+    # 抽帧
+    try:
+        frames_base64, timestamps = extract_frames(contents, interval=settings.FRAME_INTERVAL_SEC)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"视频处理失败: {str(e)}")
+
+    if not frames_base64:
+        raise HTTPException(status_code=400, detail="未能从视频中抽取有效帧，请检查视频文件")
+
+    # 调用视频工作流
+    try:
+        result = video_graph.invoke({
+            "frames_base64": frames_base64,
+            "frame_timestamps": timestamps,
+            "is_video_input": True,
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"分析过程出错: {str(e)}")
+
+    # 返回结果
+    final_result = result.get("result")
+    if not final_result:
+        raise HTTPException(status_code=500, detail="分析未返回结果")
+
+    return final_result
+
+
+@app.post("/api/analyze-video/debug")
+async def analyze_video_debug(file: UploadFile = File(...)):
+    """调试接口: 视频分析，返回每个节点的输出内容
+
+    Args:
+        file: 上传的视频文件
+
+    Returns:
+        包含所有节点输出的 JSON
+    """
+    # 验证文件类型
+    if not file.content_type or not file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="请上传有效的视频文件")
+
+    # 限制文件大小
+    max_size = settings.VIDEO_MAX_SIZE_MB * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"视频文件过大，请上传小于 {settings.VIDEO_MAX_SIZE_MB}MB 的视频",
+        )
+
+    # 抽帧
+    try:
+        frames_base64, timestamps = extract_frames(contents, interval=settings.FRAME_INTERVAL_SEC)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"视频处理失败: {str(e)}")
+
+    if not frames_base64:
+        raise HTTPException(status_code=400, detail="未能从视频中抽取有效帧，请检查视频文件")
+
+    # 逐节点收集输出
+    node_outputs = {"frame_count": len(frames_base64), "timestamps": timestamps}
+    try:
+        for event in video_graph.stream({
+            "frames_base64": frames_base64,
+            "frame_timestamps": timestamps,
+            "is_video_input": True,
+        }):
             for node_name, node_output in event.items():
                 node_outputs[node_name] = node_output
     except Exception as e:

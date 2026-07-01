@@ -13,5 +13,10 @@ class Settings:
     APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
     ENABLE_THINKING: bool = os.getenv("ENABLE_THINKING", "false").lower() == "true"
 
+    # 视频分析配置
+    VIDEO_MAX_SIZE_MB: int = int(os.getenv("VIDEO_MAX_SIZE_MB", "50"))
+    VIDEO_MAX_DURATION_SEC: int = int(os.getenv("VIDEO_MAX_DURATION_SEC", "30"))
+    FRAME_INTERVAL_SEC: float = float(os.getenv("FRAME_INTERVAL_SEC", "5.0"))
+
 
 settings = Settings()
