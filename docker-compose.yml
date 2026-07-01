@@ -13,6 +13,8 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - ./app:/app/app
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-8000}/"]

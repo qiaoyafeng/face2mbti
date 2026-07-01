@@ -18,5 +18,12 @@ class Settings:
     VIDEO_MAX_DURATION_SEC: int = int(os.getenv("VIDEO_MAX_DURATION_SEC", "30"))
     FRAME_INTERVAL_SEC: float = float(os.getenv("FRAME_INTERVAL_SEC", "5.0"))
 
+    # 文件存储配置
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
+    LOG_DIR: str = os.getenv("LOG_DIR", "./logs")
+
+    # 轮询配置
+    POLL_INTERVAL_SEC: int = int(os.getenv("POLL_INTERVAL_SEC", "5"))
+
 
 settings = Settings()

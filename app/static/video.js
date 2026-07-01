@@ -107,17 +107,61 @@ async function startAnalysis() {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.detail || '分析失败');
+            throw new Error(data.detail || '提交失败');
         }
 
-        if (data.error) {
-            showError(data.message || '分析失败，请重试');
-        } else {
-            showResult(data);
-        }
+        // 获取 task_id 和轮询间隔
+        const { task_id, poll_interval } = data;
+        const intervalMs = (poll_interval || 5) * 1000;
+
+        // 开始轮询任务状态
+        pollTaskResult(task_id, intervalMs);
     } catch (error) {
         showError(error.message || '网络错误，请重试');
     }
+}
+
+// 轮询任务结果
+async function pollTaskResult(taskId, intervalMs) {
+    async function checkOnce() {
+        try {
+            const response = await fetch(`/api/task/${taskId}?t=${Date.now()}`);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || '查询任务失败');
+            }
+
+            if (data.status === 'COMPLETED') {
+                if (data.result) {
+                    data.result.media_url = data.media_url;
+                    showResult(data.result);
+                } else {
+                    showError('分析完成但未返回结果，请重试');
+                }
+                return true;
+            } else if (data.status === 'FAILED') {
+                showError(data.error || '分析失败，请重试');
+                return true;
+            }
+            return false;
+        } catch (error) {
+            showError(error.message || '网络错误，请重试');
+            return true;
+        }
+    }
+
+    // 立即检查一次
+    const done = await checkOnce();
+    if (done) return;
+
+    // 之后定时轮询
+    const poll = setInterval(async () => {
+        const finished = await checkOnce();
+        if (finished) clearInterval(poll);
+    }, intervalMs);
+
+    window._pollInterval = poll;
 }
 
 // 模拟步骤进度动画
@@ -145,9 +189,18 @@ function simulateSteps() {
 
 function showResult(data) {
     if (window._stepInterval) clearInterval(window._stepInterval);
+    if (window._pollInterval) clearInterval(window._pollInterval);
 
     loadingSection.style.display = 'none';
     resultSection.style.display = 'flex';
+
+    // 展示上传的视频
+    if (data.media_url) {
+        const resultVideo = document.getElementById('resultVideo');
+        if (resultVideo) {
+            resultVideo.src = data.media_url;
+        }
+    }
 
     // 填充数据
     document.getElementById('mbtiType').textContent = data.mbti_type;
@@ -225,6 +278,7 @@ analysisToggle.addEventListener('click', () => {
 
 function showError(message) {
     if (window._stepInterval) clearInterval(window._stepInterval);
+    if (window._pollInterval) clearInterval(window._pollInterval);
 
     loadingSection.style.display = 'none';
     errorSection.style.display = 'block';
@@ -237,6 +291,7 @@ retryBtn.addEventListener('click', resetAll);
 errorRetryBtn.addEventListener('click', resetAll);
 
 function resetAll() {
+    if (window._pollInterval) clearInterval(window._pollInterval);
     resultSection.style.display = 'none';
     errorSection.style.display = 'none';
     loadingSection.style.display = 'none';
@@ -251,6 +306,10 @@ function resetUpload() {
     previewArea.style.display = 'none';
     uploadArea.style.display = 'block';
     analyzeBtn.disabled = true;
+
+    // 重置结果视频
+    const resultVideo = document.getElementById('resultVideo');
+    if (resultVideo) resultVideo.src = '';
 
     // 重置步骤状态
     ['step1', 'step2', 'step3', 'step4', 'step5'].forEach(id => {

@@ -34,12 +34,24 @@ def result_format_node(state: MBTIState) -> dict:
     """结果格式化节点
 
     将分析结果整合为最终展示格式。
+    如果上游节点产生了 error，将其传递到 result 中以便 task_manager 正确判断任务状态。
     """
     logger.info("[节点4: result_format] 开始格式化结果...")
     mbti_type = state.get("mbti_type", "")
     dimensions = state.get("dimensions", {})
     confidence = state.get("confidence", 0)
     face_features = state.get("face_features", "")
+    error = state.get("error")
+
+    # 如果上游节点设置了 error 且 mbti_type 为空，标记为错误结果
+    if error and not mbti_type:
+        logger.warning(f"[节点4: result_format] 上游节点报错: {error}")
+        return {
+            "result": {
+                "error": True,
+                "message": error,
+            }
+        }
 
     # 获取 MBTI 类型信息
     type_info = MBTI_INFO.get(mbti_type.upper(), {

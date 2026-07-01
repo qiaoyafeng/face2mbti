@@ -2,15 +2,51 @@
 
 import base64
 import logging
+import os
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pathlib import Path
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.config import settings
 from app.workflow.graph import graph
 from app.workflow.video_graph import video_graph
 from app.utils.video_processor import extract_frames
+from app.task_manager import create_task, update_task, get_task, run_task_async, TaskStatus
+
+# 路径常量
+STATIC_DIR = Path(__file__).parent / "static"
+UPLOAD_DIR = Path(settings.UPLOAD_DIR).resolve()
+LOG_DIR = Path(settings.LOG_DIR).resolve()
+
+
+def setup_task_logger(task_id: str) -> logging.Logger:
+    """为每个任务创建独立的日志记录器，写入日志文件"""
+    task_logger = logging.getLogger(f"task.{task_id}")
+    task_logger.setLevel(logging.INFO)
+    # 避免重复添加 handler
+    if not task_logger.handlers:
+        log_file = LOG_DIR / f"{task_id}.log"
+        fh = logging.FileHandler(str(log_file), encoding="utf-8")
+        fh.setFormatter(logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        ))
+        task_logger.addHandler(fh)
+    return task_logger
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期：启动时创建必要目录"""
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    logging.info(f"上传目录: {UPLOAD_DIR}")
+    logging.info(f"日志目录: {LOG_DIR}")
+    yield
+
 
 # 配置日志
 logging.basicConfig(
@@ -19,10 +55,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-app = FastAPI(title="Face2MBTI", description="看脸测 MBTI 性格分析")
-
-# 静态文件目录
-STATIC_DIR = Path(__file__).parent / "static"
+app = FastAPI(title="Face2MBTI", description="看脸测 MBTI 性格分析", lifespan=lifespan)
 
 
 @app.get("/")
@@ -39,13 +72,13 @@ async def video_page():
 
 @app.post("/api/analyze")
 async def analyze(file: UploadFile = File(...)):
-    """接收上传的图片，调用 LangGraph 工作流进行 MBTI 分析
+    """接收上传的图片，保存文件后创建异步任务，立即返回 task_id
 
     Args:
         file: 上传的图片文件（支持 jpg/png/webp）
 
     Returns:
-        MBTI 分析结果 JSON
+        {task_id, poll_interval}
     """
     # 验证文件类型
     if not file.content_type or not file.content_type.startswith("image/"):
@@ -56,66 +89,48 @@ async def analyze(file: UploadFile = File(...)):
     if len(contents) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="图片文件过大，请上传小于 10MB 的图片")
 
-    # 将图片转为 base64
+    # 生成任务ID
+    task_id = create_task()
+
+    # 保存上传文件
+    task_dir = UPLOAD_DIR / task_id
+    task_dir.mkdir(parents=True, exist_ok=True)
+    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "jpg"
+    save_path = task_dir / f"photo.{ext}"
+    save_path.write_bytes(contents)
+    media_url = f"/uploads/{task_id}/photo.{ext}"
+
+    # 更新任务的媒体URL
+    update_task(task_id, media_url=media_url)
+
+    # 设置任务日志
+    task_logger = setup_task_logger(task_id)
+
+    # 转为 base64 供工作流使用
     image_base64 = base64.b64encode(contents).decode("utf-8")
 
-    # 调用 LangGraph 工作流
-    try:
-        result = graph.invoke({"image_base64": image_base64})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"分析过程出错: {str(e)}")
+    # 包装工作流调用，加入日志
+    def run_workflow(input_data):
+        task_logger.info("开始图片分析工作流")
+        result = graph.invoke(input_data)
+        task_logger.info(f"工作流完成: {result.get('result', {}).get('mbti_type', 'unknown')}")
+        return result
 
-    # 返回结果
-    final_result = result.get("result")
-    if not final_result:
-        raise HTTPException(status_code=500, detail="分析未返回结果")
+    # 后台异步执行
+    await run_task_async(task_id, run_workflow, {"image_base64": image_base64})
 
-    return final_result
-
-
-@app.post("/api/analyze/debug")
-async def analyze_debug(file: UploadFile = File(...)):
-    """调试接口: 返回每个节点的输出内容
-
-    Args:
-        file: 上传的图片文件（支持 jpg/png/webp）
-
-    Returns:
-        包含所有节点输出的 JSON
-    """
-    # 验证文件类型
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="请上传有效的图片文件")
-
-    # 限制文件大小 (10MB)
-    contents = await file.read()
-    if len(contents) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="图片文件过大，请上传小于 10MB 的图片")
-
-    # 将图片转为 base64
-    image_base64 = base64.b64encode(contents).decode("utf-8")
-
-    # 逐节点收集输出
-    node_outputs = {}
-    try:
-        for event in graph.stream({"image_base64": image_base64}):
-            for node_name, node_output in event.items():
-                node_outputs[node_name] = node_output
-    except Exception as e:
-        node_outputs["error"] = str(e)
-
-    return node_outputs
+    return {"task_id": task_id, "poll_interval": settings.POLL_INTERVAL_SEC}
 
 
 @app.post("/api/analyze-video")
 async def analyze_video(file: UploadFile = File(...)):
-    """接收上传的视频，抽帧后调用工作流分析 MBTI
+    """接收上传的视频，保存文件后创建异步任务，立即返回 task_id
 
     Args:
         file: 上传的视频文件（支持 mp4/webm/mov 等）
 
     Returns:
-        MBTI 分析结果 JSON
+        {task_id, poll_interval}
     """
     # 验证文件类型
     if not file.content_type or not file.content_type.startswith("video/"):
@@ -130,84 +145,78 @@ async def analyze_video(file: UploadFile = File(...)):
             detail=f"视频文件过大，请上传小于 {settings.VIDEO_MAX_SIZE_MB}MB 的视频",
         )
 
-    # 抽帧
-    try:
-        frames_base64, timestamps = extract_frames(contents, interval=settings.FRAME_INTERVAL_SEC)
-    except RuntimeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"视频处理失败: {str(e)}")
+    # 生成任务ID
+    task_id = create_task()
 
-    if not frames_base64:
-        raise HTTPException(status_code=400, detail="未能从视频中抽取有效帧，请检查视频文件")
+    # 保存上传文件
+    task_dir = UPLOAD_DIR / task_id
+    task_dir.mkdir(parents=True, exist_ok=True)
+    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "mp4"
+    save_path = task_dir / f"video.{ext}"
+    save_path.write_bytes(contents)
+    media_url = f"/uploads/{task_id}/video.{ext}"
 
-    # 调用视频工作流
-    try:
+    # 更新任务的媒体URL
+    update_task(task_id, media_url=media_url)
+
+    # 设置任务日志
+    task_logger = setup_task_logger(task_id)
+
+    # 包装工作流调用（含抽帧）
+    def run_workflow(video_bytes):
+        task_logger.info("开始视频抽帧")
+        frames_base64, timestamps = extract_frames(video_bytes, interval=settings.FRAME_INTERVAL_SEC)
+        if not frames_base64:
+            raise RuntimeError("未能从视频中抽取有效帧")
+        task_logger.info(f"抽取 {len(frames_base64)} 帧，开始视频分析工作流")
         result = video_graph.invoke({
             "frames_base64": frames_base64,
             "frame_timestamps": timestamps,
             "is_video_input": True,
         })
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"分析过程出错: {str(e)}")
+        task_logger.info(f"工作流完成: {result.get('result', {}).get('mbti_type', 'unknown')}")
+        return result
 
-    # 返回结果
-    final_result = result.get("result")
-    if not final_result:
-        raise HTTPException(status_code=500, detail="分析未返回结果")
+    # 后台异步执行
+    await run_task_async(task_id, run_workflow, contents)
 
-    return final_result
+    return {"task_id": task_id, "poll_interval": settings.POLL_INTERVAL_SEC}
 
 
-@app.post("/api/analyze-video/debug")
-async def analyze_video_debug(file: UploadFile = File(...)):
-    """调试接口: 视频分析，返回每个节点的输出内容
-
-    Args:
-        file: 上传的视频文件
+@app.get("/api/task/{task_id}")
+async def query_task(task_id: str):
+    """查询任务状态和结果
 
     Returns:
-        包含所有节点输出的 JSON
+        {status, result?, error?, media_url?}
     """
-    # 验证文件类型
-    if not file.content_type or not file.content_type.startswith("video/"):
-        raise HTTPException(status_code=400, detail="请上传有效的视频文件")
+    task = get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
 
-    # 限制文件大小
-    max_size = settings.VIDEO_MAX_SIZE_MB * 1024 * 1024
-    contents = await file.read()
-    if len(contents) > max_size:
-        raise HTTPException(
-            status_code=400,
-            detail=f"视频文件过大，请上传小于 {settings.VIDEO_MAX_SIZE_MB}MB 的视频",
-        )
+    response_data = {
+        "status": task["status"].value,
+        "media_url": task.get("media_url"),
+    }
 
-    # 抽帧
-    try:
-        frames_base64, timestamps = extract_frames(contents, interval=settings.FRAME_INTERVAL_SEC)
-    except RuntimeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"视频处理失败: {str(e)}")
+    if task["status"] == TaskStatus.COMPLETED:
+        response_data["result"] = task.get("result")
+    elif task["status"] == TaskStatus.FAILED:
+        response_data["error"] = task.get("error", "未知错误")
 
-    if not frames_base64:
-        raise HTTPException(status_code=400, detail="未能从视频中抽取有效帧，请检查视频文件")
+    return JSONResponse(
+        content=response_data,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
-    # 逐节点收集输出
-    node_outputs = {"frame_count": len(frames_base64), "timestamps": timestamps}
-    try:
-        for event in video_graph.stream({
-            "frames_base64": frames_base64,
-            "frame_timestamps": timestamps,
-            "is_video_input": True,
-        }):
-            for node_name, node_output in event.items():
-                node_outputs[node_name] = node_output
-    except Exception as e:
-        node_outputs["error"] = str(e)
 
-    return node_outputs
-
+# 挂载上传文件目录（供前端访问上传的照片/视频）
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 # 挂载静态文件（CSS、JS 等）
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

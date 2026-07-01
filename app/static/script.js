@@ -36,6 +36,9 @@ let cameraStream = null;
 let facingMode = 'user'; // 'user' = 前置, 'environment' = 后置
 let capturedBlob = null;
 let uploadedPhotoDataUrl = null; // 存储上传照片的 Data URL
+let isSubmitting = false; // 防止重复提交
+let loadingStartTime = 0; // loading 开始时间
+const MIN_LOADING_MS = 2000; // 最小 loading 展示时间（2秒）
 
 // ============ 上传相关 ============
 
@@ -219,7 +222,14 @@ cameraOverlay.addEventListener('click', closeCamera);
 analyzeBtn.addEventListener('click', startAnalysis);
 
 async function startAnalysis() {
-    if (!selectedFile) return;
+    if (!selectedFile || isSubmitting) return;
+
+    // 防止重复提交
+    isSubmitting = true;
+    analyzeBtn.disabled = true;
+
+    // 记录 loading 开始时间
+    loadingStartTime = Date.now();
 
     // 显示加载状态
     uploadSection.style.display = 'none';
@@ -243,17 +253,62 @@ async function startAnalysis() {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.detail || '分析失败');
+            throw new Error(data.detail || '提交失败');
         }
 
-        if (data.error) {
-            showError(data.message || '分析失败，请重试');
-        } else {
-            showResult(data);
-        }
+        // 获取 task_id 和轮询间隔
+        const { task_id, poll_interval } = data;
+        const intervalMs = (poll_interval || 5) * 1000;
+
+        // 开始轮询任务状态
+        pollTaskResult(task_id, intervalMs);
     } catch (error) {
         showError(error.message || '网络错误，请重试');
     }
+}
+
+// 轮询任务结果
+async function pollTaskResult(taskId, intervalMs) {
+    async function checkOnce() {
+        try {
+            const response = await fetch(`/api/task/${taskId}?t=${Date.now()}`);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || '查询任务失败');
+            }
+
+            if (data.status === 'COMPLETED') {
+                if (data.result) {
+                    data.result.media_url = data.media_url;
+                    showResult(data.result);
+                } else {
+                    showError('分析完成但未返回结果，请重试');
+                }
+                return true; // 已完成
+            } else if (data.status === 'FAILED') {
+                showError(data.error || '分析失败，请重试');
+                return true; // 已完成
+            }
+            // PENDING / PROCESSING 继续轮询
+            return false;
+        } catch (error) {
+            showError(error.message || '网络错误，请重试');
+            return true; // 出错停止轮询
+        }
+    }
+
+    // 立即检查一次
+    const done = await checkOnce();
+    if (done) return;
+
+    // 之后定时轮询
+    const poll = setInterval(async () => {
+        const finished = await checkOnce();
+        if (finished) clearInterval(poll);
+    }, intervalMs);
+
+    window._pollInterval = poll;
 }
 
 // 模拟步骤进度动画
@@ -282,31 +337,49 @@ function simulateSteps() {
 
 function showResult(data) {
     if (window._stepInterval) clearInterval(window._stepInterval);
+    if (window._pollInterval) clearInterval(window._pollInterval);
 
-    loadingSection.style.display = 'none';
-    resultSection.style.display = 'flex';
-
-    // 展示上传的照片
-    if (uploadedPhotoDataUrl) {
-        document.getElementById('resultPhoto').src = uploadedPhotoDataUrl;
+    // 校验必要字段，数据不合法则展示错误
+    if (!data || !data.mbti_type) {
+        showError('分析结果数据异常，请重试');
+        return;
     }
 
-    // 填充数据
-    document.getElementById('mbtiType').textContent = data.mbti_type;
-    document.getElementById('mbtiNickname').textContent = data.nickname;
-    document.getElementById('resultDescription').textContent = data.description;
-    document.getElementById('confidenceValue').textContent = data.confidence + '%';
+    // 确保 loading 至少展示 MIN_LOADING_MS 毫秒
+    const elapsed = Date.now() - loadingStartTime;
+    const delay = Math.max(0, MIN_LOADING_MS - elapsed);
 
-    // 匹配度进度条动画
     setTimeout(() => {
-        document.getElementById('confidenceBar').style.width = data.confidence + '%';
-    }, 100);
+        loadingSection.style.display = 'none';
+        resultSection.style.display = 'flex';
 
-    // 渲染四个维度
-    renderDimensions(data.dimensions);
+        // 展示上传的照片
+        if (data.media_url) {
+            document.getElementById('resultPhoto').src = data.media_url;
+        } else if (uploadedPhotoDataUrl) {
+            document.getElementById('resultPhoto').src = uploadedPhotoDataUrl;
+        }
 
-    // 渲染面部分析（使用 Markdown）
-    renderFaceAnalysis(data.face_analysis);
+        // 填充数据
+        document.getElementById('mbtiType').textContent = data.mbti_type;
+        document.getElementById('mbtiNickname').textContent = data.nickname || '';
+        document.getElementById('resultDescription').textContent = data.description || '';
+        document.getElementById('confidenceValue').textContent = (data.confidence ?? 0) + '%';
+
+        // 匹配度进度条动画
+        setTimeout(() => {
+            document.getElementById('confidenceBar').style.width = (data.confidence ?? 0) + '%';
+        }, 100);
+
+        // 渲染四个维度
+        renderDimensions(data.dimensions);
+
+        // 渲染面部分析
+        renderFaceAnalysis(data.face_analysis);
+
+        // 重置提交状态
+        isSubmitting = false;
+    }, delay);
 }
 
 // 渲染四维度分析
@@ -369,10 +442,19 @@ analysisToggle.addEventListener('click', () => {
 
 function showError(message) {
     if (window._stepInterval) clearInterval(window._stepInterval);
+    if (window._pollInterval) clearInterval(window._pollInterval);
 
-    loadingSection.style.display = 'none';
-    errorSection.style.display = 'block';
-    document.getElementById('errorMessage').textContent = message;
+    // 确保 loading 至少展示 MIN_LOADING_MS 毫秒，避免闪退
+    const elapsed = Date.now() - loadingStartTime;
+    const delay = Math.max(0, MIN_LOADING_MS - elapsed);
+
+    setTimeout(() => {
+        loadingSection.style.display = 'none';
+        errorSection.style.display = 'block';
+        document.getElementById('errorMessage').textContent = message;
+        // 重置提交状态
+        isSubmitting = false;
+    }, delay);
 }
 
 // ============ 重试 ============
@@ -381,10 +463,12 @@ retryBtn.addEventListener('click', resetAll);
 errorRetryBtn.addEventListener('click', resetAll);
 
 function resetAll() {
+    if (window._pollInterval) clearInterval(window._pollInterval);
     resultSection.style.display = 'none';
     errorSection.style.display = 'none';
     loadingSection.style.display = 'none';
     uploadSection.style.display = 'flex';
+    isSubmitting = false;
     resetUpload();
 }
 

@@ -36,3 +36,7 @@ docker-compose.yml
 # Documentation
 README.md
 *.md
+
+# Runtime data
+uploads/
+logs/
