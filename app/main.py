@@ -4,6 +4,7 @@ import base64
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -14,28 +15,14 @@ from app.config import settings
 from app.workflow.graph import graph
 from app.workflow.video_graph import video_graph
 from app.utils.video_processor import extract_frames
-from app.task_manager import create_task, update_task, get_task, run_task_async, TaskStatus
+from app.task_manager import create_task, update_task, get_task, run_task_async, TaskStatus, init_result_dir
 
 # 路径常量
 STATIC_DIR = Path(__file__).parent / "static"
 UPLOAD_DIR = Path(settings.UPLOAD_DIR).resolve()
 LOG_DIR = Path(settings.LOG_DIR).resolve()
 
-
-def setup_task_logger(task_id: str) -> logging.Logger:
-    """为每个任务创建独立的日志记录器，写入日志文件"""
-    task_logger = logging.getLogger(f"task.{task_id}")
-    task_logger.setLevel(logging.INFO)
-    # 避免重复添加 handler
-    if not task_logger.handlers:
-        log_file = LOG_DIR / f"{task_id}.log"
-        fh = logging.FileHandler(str(log_file), encoding="utf-8")
-        fh.setFormatter(logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        ))
-        task_logger.addHandler(fh)
-    return task_logger
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -43,12 +30,31 @@ async def lifespan(app: FastAPI):
     """应用生命周期：启动时创建必要目录"""
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    logging.info(f"上传目录: {UPLOAD_DIR}")
-    logging.info(f"日志目录: {LOG_DIR}")
+    # 初始化结果持久化目录
+    init_result_dir(settings.RESULT_DIR)
+    # 配置按日期记录的日志文件
+    _setup_date_logger()
+    logger.info(f"上传目录: {UPLOAD_DIR}")
+    logger.info(f"日志目录: {LOG_DIR}")
     yield
 
 
-# 配置日志
+def _setup_date_logger():
+    """配置按日期记录的日志，所有日志写入同一文件"""
+    today = date.today().isoformat()  # e.g. 2026-07-01
+    log_file = LOG_DIR / f"{today}.log"
+    file_handler = logging.FileHandler(str(log_file), encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    # 将文件 handler 添加到 root logger
+    root = logging.getLogger()
+    root.addHandler(file_handler)
+    logger.info(f"日志文件: {log_file}")
+
+
+# 配置日志（控制台）
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -103,17 +109,14 @@ async def analyze(file: UploadFile = File(...)):
     # 更新任务的媒体URL
     update_task(task_id, media_url=media_url)
 
-    # 设置任务日志
-    task_logger = setup_task_logger(task_id)
-
     # 转为 base64 供工作流使用
     image_base64 = base64.b64encode(contents).decode("utf-8")
 
-    # 包装工作流调用，加入日志
+    # 包装工作流调用
     def run_workflow(input_data):
-        task_logger.info("开始图片分析工作流")
+        logger.info(f"[{task_id}] 开始图片分析工作流")
         result = graph.invoke(input_data)
-        task_logger.info(f"工作流完成: {result.get('result', {}).get('mbti_type', 'unknown')}")
+        logger.info(f"[{task_id}] 工作流完成: {result.get('result', {}).get('mbti_type', 'unknown')}")
         return result
 
     # 后台异步执行
@@ -159,22 +162,19 @@ async def analyze_video(file: UploadFile = File(...)):
     # 更新任务的媒体URL
     update_task(task_id, media_url=media_url)
 
-    # 设置任务日志
-    task_logger = setup_task_logger(task_id)
-
     # 包装工作流调用（含抽帧）
     def run_workflow(video_bytes):
-        task_logger.info("开始视频抽帧")
+        logger.info(f"[{task_id}] 开始视频抽帧")
         frames_base64, timestamps = extract_frames(video_bytes, interval=settings.FRAME_INTERVAL_SEC)
         if not frames_base64:
             raise RuntimeError("未能从视频中抽取有效帧")
-        task_logger.info(f"抽取 {len(frames_base64)} 帧，开始视频分析工作流")
+        logger.info(f"[{task_id}] 抽取 {len(frames_base64)} 帧，开始视频分析工作流")
         result = video_graph.invoke({
             "frames_base64": frames_base64,
             "frame_timestamps": timestamps,
             "is_video_input": True,
         })
-        task_logger.info(f"工作流完成: {result.get('result', {}).get('mbti_type', 'unknown')}")
+        logger.info(f"[{task_id}] 工作流完成: {result.get('result', {}).get('mbti_type', 'unknown')}")
         return result
 
     # 后台异步执行

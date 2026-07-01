@@ -32,6 +32,9 @@ logs/
 # Uploads
 uploads/
 
+# Task results
+results/
+
 # Testing
 .pytest_cache/
 .coverage

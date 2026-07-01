@@ -15,6 +15,7 @@ services:
       - ./app:/app/app
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      - ./results:/app/results
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-8000}/"]

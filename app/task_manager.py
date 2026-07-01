@@ -1,14 +1,17 @@
 """异步任务管理模块
 
 职责: 管理测评任务的生命周期，支持后台异步执行 LangGraph 工作流。
+任务结果持久化到文件，支持按 task_id 查询。
 """
 
 import asyncio
+import json
 import logging
 import threading
 import uuid
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -21,9 +24,55 @@ class TaskStatus(str, Enum):
     FAILED = "FAILED"
 
 
-# 全局任务存储与线程锁
+# 全局任务存储与线程锁（内存缓存）
 _tasks: dict[str, dict] = {}
 _lock = threading.Lock()
+
+# 结果持久化目录，由 init_result_dir() 设置
+_result_dir: Optional[Path] = None
+
+
+def init_result_dir(result_dir: str):
+    """初始化结果持久化目录"""
+    global _result_dir
+    _result_dir = Path(result_dir).resolve()
+    _result_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"结果存储目录: {_result_dir}")
+
+
+def _save_result_to_file(task_id: str, task_data: dict):
+    """将任务结果持久化到 JSON 文件"""
+    if _result_dir is None:
+        return
+    result_file = _result_dir / f"{task_id}.json"
+    data_to_save = {
+        "task_id": task_id,
+        "status": task_data["status"].value if isinstance(task_data["status"], TaskStatus) else task_data["status"],
+        "result": task_data.get("result"),
+        "error": task_data.get("error"),
+        "media_url": task_data.get("media_url"),
+        "created_at": task_data.get("created_at"),
+        "updated_at": datetime.now().isoformat(),
+    }
+    result_file.write_text(json.dumps(data_to_save, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _load_result_from_file(task_id: str) -> Optional[dict]:
+    """从 JSON 文件加载任务结果"""
+    if _result_dir is None:
+        return None
+    result_file = _result_dir / f"{task_id}.json"
+    if not result_file.exists():
+        return None
+    try:
+        data = json.loads(result_file.read_text(encoding="utf-8"))
+        # 将 status 字符串转回枚举
+        status_str = data.get("status", "PENDING")
+        data["status"] = TaskStatus(status_str)
+        return data
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.warning(f"读取任务结果文件失败: {task_id} - {e}")
+        return None
 
 
 def create_task(media_url: Optional[str] = None) -> str:
@@ -42,18 +91,34 @@ def create_task(media_url: Optional[str] = None) -> str:
 
 
 def update_task(task_id: str, **kwargs):
-    """更新任务状态/结果"""
+    """更新任务状态/结果，终态时持久化到文件"""
     with _lock:
         if task_id in _tasks:
             _tasks[task_id].update(kwargs)
+            status = kwargs.get("status")
+            # 任务到达终态时持久化
+            if status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
+                _save_result_to_file(task_id, _tasks[task_id])
 
 
 def get_task(task_id: str) -> Optional[dict]:
-    """获取任务信息（返回快照副本）"""
+    """获取任务信息（返回快照副本）
+
+    优先从内存缓存查找，找不到则从持久化文件加载。
+    """
     with _lock:
         task = _tasks.get(task_id)
         if task:
             return dict(task)
+
+    # 内存中没有，尝试从文件加载
+    file_task = _load_result_from_file(task_id)
+    if file_task:
+        # 回填到内存缓存
+        with _lock:
+            _tasks[task_id] = file_task
+        return file_task
+
     return None
 
 

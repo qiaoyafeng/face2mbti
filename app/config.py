@@ -21,6 +21,7 @@ class Settings:
     # 文件存储配置
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
     LOG_DIR: str = os.getenv("LOG_DIR", "./logs")
+    RESULT_DIR: str = os.getenv("RESULT_DIR", "./results")
 
     # 轮询配置
     POLL_INTERVAL_SEC: int = int(os.getenv("POLL_INTERVAL_SEC", "5"))
